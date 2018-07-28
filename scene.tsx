@@ -1,82 +1,28 @@
 import * as DCL from 'metaverse-api'
 
-interface Coordinate {
-  x: number
-  y: number
-  z: number
-}
+import { Coordinate, CoordinateToPosition } from './types'
 
-const LIMIT_X = 19
-const LIMIT_Y = 19
-const LIMIT_Z = 19
-const DELTA = [ -1, 0, 1 ]
+import { offset, transparency, size } from './const'
 
-function getElementPositionFromString(elementName: string): Coordinate {
-  const [x, y, z] = elementName.split(',').map((x: string) => parseInt(x, 10))
-  return { x, y, z }
-}
-
-function getElementPositionFromId(elementName: string): Coordinate {
-  if (elementName.startsWith('placeholder')) {
-    return getElementPositionFromString(elementName.substr('placeholder_'.length))
-  }
-  if (elementName.startsWith('finalized')) {
-    return getElementPositionFromString(elementName.substr('finalized_'.length))
-  }
-  throw new Error('Invalid elementName')
-}
-
-const offset = 0.4
-const transparency = 0.1
-const size = 0.4
-
-function scalePosition(position: Coordinate): Coordinate {
-  return { x: position.x * size, y: position.y * size, z: position.z * size }
-}
-
-function exists(x: any) {
-  return !!x
-}
-
-function nineNeighbors(position: Coordinate): Array<Coordinate> {
-  const res = []
-  for (let dx of DELTA) {
-      const x = position.x + dx
-      if (x >= 0 && x <= LIMIT_X)
-      for (let dy of DELTA) {
-          const y = position.y + dy
-          if (y >= 0 && y <= LIMIT_Y)
-          for (let dz of DELTA) {
-              const z = position.z + dz
-              if (z >= 0 && z <= LIMIT_Z)
-              res.push({ x: position.x + dx, y: position.y + dy, z: position.z + dz })
-          }
-      }
-  }
-  return res
-}
-
-function positionPlaceholder(position: Coordinate) {
-  return `placeholder_${positionToString(position)}`
-}
-
-function positionFinal(position: Coordinate) {
-  return `final_${positionToString(position)}`
-}
-
-function positionToString(position: Coordinate) {
-  return `${position.x},${position.y},${position.z}`
-}
-
-interface CoordinateToPosition {
-  [key: string]: Coordinate
-}
+import {
+  getElementPositionFromId,
+  scalePosition,
+  nineNeighbors,
+  exists,
+  positionToString,
+  positionPlaceholder,
+  positionFinal
+} from './auxFunc'
 
 export default class SampleScene extends DCL.ScriptableScene {
   state: {
+    currentBox: Coordinate | null
     finalBoxes: CoordinateToPosition
     placeholderBoxes: CoordinateToPosition
-  } = { finalBoxes: {}, placeholderBoxes: {} }
+  } = { finalBoxes: {}, currentBox: null, placeholderBoxes: {} }
+
+  lastPosition: Coordinate | null = null
+  lastRotation: Coordinate | null = null
 
   finalizeBox(position: Coordinate) {
     const newPlaceHolders: CoordinateToPosition = {}
@@ -92,6 +38,7 @@ export default class SampleScene extends DCL.ScriptableScene {
         ...newPlaceHolders,
         [positionToString(position)]: null
       },
+      currentBox: null,
       finalBoxes: {
         ...this.state.finalBoxes,
         [positionToString(position)]: position
@@ -110,6 +57,7 @@ export default class SampleScene extends DCL.ScriptableScene {
     }
     this.state = {
       placeholderBoxes,
+      currentBox: null,
       finalBoxes: {}
     }
   }
@@ -120,29 +68,75 @@ export default class SampleScene extends DCL.ScriptableScene {
         this.finalizeBox(getElementPositionFromId(ev.data.elementId))
       }
     })
+    this.eventSubscriber.on('positionChanged', (ev) => {
+      this.lastPosition = ev.data.cameraPosition
+      this.updateCurrent()
+    })
+    this.eventSubscriber.on('rotationChanged', (ev) => {
+      this.lastRotation = normalize(ev.data.quaternion)
+      this.updateCurrent()
+    })
+  }
+
+  updateCurrent() {
+    if (this.lastRotation && this.lastPosition) {
+      const box = raycast(this.lastPosition, this.lastRotation, 20, {
+x: 30, y: 30, z: 30 }, (coor: Coordinate, face: Coordinate) => {
+
+        console.log(`testing ${JSON.stringify(coor)} returns ${!!this.state.placeholderBoxes[positionToString(coor)]}`)
+        return !!this.state.placeholderBoxes[positionToString(coor)]
+      })
+      if (box) {
+        this.setState({ ...this.state,
+          currentBox: box
+        })
+      }
+    }
   }
 
   drawFinalizedBoxes() {
     return <entity position={{ x: offset, z: offset, y: offset }}>
-      { Object.values(this.state.finalBoxes).filter(exists).map((position: Coordinate) => {
-        return <box scale={{ x: size, y: size, z: size }} id={positionFinal(position)} position={scalePosition(position)} withCollisions={true} color={'#FFFFFF'} />
-      }) }
+      { Object.values(this.state.finalBoxes)
+          .filter(exists)
+          .map((position: Coordinate) => {
+            return <box 
+              scale={{ x: size, y: size, z: size }}
+              id={positionFinal(position)}
+              position={scalePosition(position)} 
+              withCollisions={true}
+              color={'#FFFFFF'}
+            />
+          })    
+        }
     </entity>
   }
 
   drawTransparentBoxes() {
     return <entity position={{ x: offset, z: offset, y: offset }}>
-      { Object.values(this.state.placeholderBoxes).filter(exists).map((position: Coordinate) => {
-        return <box id={positionPlaceholder(position)} scale={{ x: size, y: size, z: size }} position={scalePosition(position)} material={'#transparent'} />
-      })}
+      { Object.values(this.state.placeholderBoxes)
+          .filter(exists)
+          .map((position: Coordinate) => {
+            return <box 
+              scale={{ x: size, y: size, z: size }}
+              id={positionPlaceholder(position)}
+              position={scalePosition(position)} 
+              material={'#transparent'}
+            />
+          })    
+      }
     </entity>
+  }
+
+  drawCurrentBox() {
+    if (!this.state.currentBox) return null
+    return <box id={'currentBox'} position={this.state.currentBox} scale={{ x: size, y: size, z: size }} material={'#transparent'} />
   }
 
   async render() {
     return (
       <scene>
         <material id='transparent' ambientColor={'#FFFFFF'} alpha={transparency} />
-        { this.drawTransparentBoxes() }
+        { this.drawCurrentBox() }
         { this.drawFinalizedBoxes() }
       </scene>
     )
