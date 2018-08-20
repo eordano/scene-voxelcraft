@@ -6,15 +6,20 @@ import { LIMIT_X, LIMIT_Y, LIMIT_Z, offset, transparency, size } from './const'
 
 import { distance, normalize, raycast } from './raycast'
 
+import * as socketIo from 'socket.io-client'
+
 import {
   scalePosition,
   nineNeighbors,
   exists,
   getElementPositionFromId,
+  getElementPositionFromString,
   positionToString,
   positionPlaceholder,
   positionFinal
 } from './auxFunc'
+
+const server = 'https://app-lathwagftc.now.sh'
 
 export default class SampleScene extends DCL.ScriptableScene {
   state: {
@@ -23,24 +28,76 @@ export default class SampleScene extends DCL.ScriptableScene {
     placeholderBoxes: CoordinateToPosition
   } = { finalBoxes: {}, currentBox: null, placeholderBoxes: {} }
 
+  socket: any = socketIo(server)
+
+  async setupListener() {
+      this.socket.on('message', (data: any) => {
+          if (data.a === 'build') this.finalizeBox(getElementPositionFromString(data.c))
+          if (data.a === 'destroy') this.deleteBox(getElementPositionFromString(data.c))
+      })
+  }
+
+  async sendBuild(coor: string) {
+    this.socket.emit('message', `{"a": "build", "c": "${coor}"}`)
+  }
+  async sendDestroy(coor: string) {
+    this.socket.emit('message', `{"a": "destroy", "c": "${coor}"}`)
+  }
+
+  async syncWithServer() {
+      try {
+          const data = await (fetch(`${server}/all`).then(res => res.json()))
+          const finalBoxes: CoordinateToPosition = {}
+          const placeholderBoxes: CoordinateToPosition = {}
+          for (let item of data) {
+              finalBoxes[item] = getElementPositionFromString(item) 
+              const nine = nineNeighbors(finalBoxes[item])
+              for (let neighbor of nine) {
+                const pos = positionToString(neighbor)
+                if (placeholderBoxes[pos] === undefined) {
+                  placeholderBoxes[pos] = neighbor
+                }
+              }
+          }
+          for (let i = 1; i < LIMIT_X; i++) {
+            for (let j = 1; j < LIMIT_Z; j++) {
+              const pos = { x: i, z: j, y: 0 }
+              const st = positionToString(pos)
+              if (!finalBoxes[st]) placeholderBoxes[st] = pos
+            }
+          }
+          this.setState({
+            placeholderBoxes,
+            currentBox: null,
+            finalBoxes
+          })
+      } catch (e) {
+          this.setupLocal()
+      }
+  }
+
   lastPosition: Coordinate | null = null
   lastRotation: Coordinate | null = null
 
-  deleteBox(position: Coordinate) {
+  deleteBox(position: Coordinate, send?: true) {
+    const str = positionToString(position)
+    if (send) this.sendDestroy(str)
     this.setState({
       placeholderBoxes: {
         ...this.state.placeholderBoxes,
-        [positionToString(position)]: position
+        [str]: position
       },
       currentBox: null,
       finalBoxes: {
         ...this.state.finalBoxes,
-        [positionToString(position)]: null
+        [str]: null
       }
     })
   }
 
-  finalizeBox(position: Coordinate) {
+  finalizeBox(position: Coordinate, send?: true) {
+    const str = positionToString(position)
+    if (send) this.sendBuild(str)
     const newPlaceHolders: CoordinateToPosition = {}
     for (let neighbor of nineNeighbors(position)) {
       const pos = positionToString(neighbor)
@@ -52,18 +109,17 @@ export default class SampleScene extends DCL.ScriptableScene {
       placeholderBoxes: {
         ...this.state.placeholderBoxes,
         ...newPlaceHolders,
-        [positionToString(position)]: null
+        [str]: null
       },
       currentBox: null,
       finalBoxes: {
         ...this.state.finalBoxes,
-        [positionToString(position)]: position
+        [str]: position
       }
     })
   }
 
-  constructor(t: any) {
-    super(t)
+  setupLocal() {
     const placeholderBoxes: CoordinateToPosition = {}
     for (let i = 1; i < LIMIT_X; i++) {
       for (let j = 1; j < LIMIT_Z; j++) {
@@ -71,21 +127,31 @@ export default class SampleScene extends DCL.ScriptableScene {
         placeholderBoxes[positionToString(pos)] = pos
       }
     }
-    this.state = {
+    this.setState({
       placeholderBoxes,
       currentBox: null,
       finalBoxes: {}
+    })
+  }
+
+  constructor(t: any) {
+    super(t)
+    this.state = {
+      placeholderBoxes: {},
+      currentBox: null,
+      finalBoxes: {}
     }
+    this.syncWithServer()
+    this.setupListener()
   }
 
   async sceneDidMount() {
     this.eventSubscriber.on(`click`, (ev) => {
       if (ev.data.elementId.startsWith('currentBox')) {
-        this.finalizeBox(this.state.currentBox!)
+        this.finalizeBox(this.state.currentBox!, true)
       }
       if (ev.data.elementId.startsWith('final')) {
-          console.log(ev.data)
-        this.deleteBox(getElementPositionFromId(ev.data.elementId))
+        this.deleteBox(getElementPositionFromId(ev.data.elementId), true)
       }
     })
     this.eventSubscriber.on('positionChanged', (ev) => {

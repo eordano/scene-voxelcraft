@@ -1,5 +1,6 @@
 import { createServer } from 'http'
 
+const cors = require('cors')
 const Express = require('express')
 const socketIo = require('socket.io')
 
@@ -35,6 +36,7 @@ function start(): any {
     const sockets = socketIo(server)
     const map: Map = {}
 
+    express.use(cors())
     express.get('/all', (req, res) => {
         res.send(JSON.stringify(Object.keys(map).filter(k => !!map[k])))
     })
