@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "My new Decentraland project",
   "scripts": {
-    "start": "dcl start",
+    "start": "echo \"{\\\"trackStats\\\": false}\" >> ~/.dclinfo && dcl start",
     "build": "metaverse-compiler build.json",
     "watch": "metaverse-compiler build.json --watch"
   },
@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@types/socket.io-client": "^1.4.32",
+    "decentraland": "git+https://github.com/decentraland/cli.git#feat/nowatch",
     "decentraland-api": "^4.1.0-20180808195242.commit-08c2b12",
     "socket.io-client": "^2.1.1"
   }

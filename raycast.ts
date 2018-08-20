@@ -6,8 +6,7 @@ export function normalize(qt: { alpha: number, beta: number }): Coordinate {
       y: Math.sin(qt.beta * Math.PI / 180),
       x: -Math.sin(qt.alpha * Math.PI / 180)*Math.cos(qt.beta * Math.PI / 180),
   }
-    console.log(qt, res)
-return res
+  return res
 }
 
 /**

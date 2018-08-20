@@ -6,12 +6,6 @@ const socketIo = require('socket.io')
 
 type Action = 'build' | 'destroy'
 
-interface Coordinate {
-    x: number
-    y: number
-    z: number
-}
-
 interface Message {
     a: Action
     c: string
@@ -37,7 +31,7 @@ function start(): any {
     const map: Map = {}
 
     express.use(cors())
-    express.get('/all', (req, res) => {
+    express.get('/all', (req: any, res: any) => {
         res.send(JSON.stringify(Object.keys(map).filter(k => !!map[k])))
     })
 

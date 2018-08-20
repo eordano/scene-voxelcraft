@@ -159,7 +159,6 @@ export default class SampleScene extends DCL.ScriptableScene {
       this.updateCurrent()
     })
     this.eventSubscriber.on('rotationChanged', (ev) => {
-    console.log(ev.data.rotation)
       this.lastRotation = normalize({
         alpha: -ev.data.rotation.y,
         beta: -ev.data.rotation.x
@@ -170,11 +169,8 @@ export default class SampleScene extends DCL.ScriptableScene {
 
   updateCurrent() {
     if (this.lastRotation && this.lastPosition) {
-      let count = 0
       const box = raycast(this.lastPosition, this.lastRotation, 20, {
 x: LIMIT_X, y: LIMIT_Y, z: LIMIT_Z }, (coor: Coordinate, face: Coordinate) => {
-        count++;
-        console.log(`testing ${count} ${JSON.stringify(coor)} returns ${!!this.state.placeholderBoxes[positionToString(coor)]}`)
         if (distance(coor, this.lastPosition!) < 2.5) return false
 
         return !!this.state.placeholderBoxes[positionToString(coor)] || !!this.state.finalBoxes[positionToString(coor)]
