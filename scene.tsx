@@ -2,13 +2,15 @@ import * as DCL from 'metaverse-api'
 
 import { Coordinate, CoordinateToPosition } from './types'
 
-import { offset, transparency, size } from './const'
+import { LIMIT_X, LIMIT_Y, LIMIT_Z, offset, transparency, size } from './const'
+
+import { distance, normalize, raycast } from './raycast'
 
 import {
-  getElementPositionFromId,
   scalePosition,
   nineNeighbors,
   exists,
+  getElementPositionFromId,
   positionToString,
   positionPlaceholder,
   positionFinal
@@ -23,6 +25,20 @@ export default class SampleScene extends DCL.ScriptableScene {
 
   lastPosition: Coordinate | null = null
   lastRotation: Coordinate | null = null
+
+  deleteBox(position: Coordinate) {
+    this.setState({
+      placeholderBoxes: {
+        ...this.state.placeholderBoxes,
+        [positionToString(position)]: position
+      },
+      currentBox: null,
+      finalBoxes: {
+        ...this.state.finalBoxes,
+        [positionToString(position)]: null
+      }
+    })
+  }
 
   finalizeBox(position: Coordinate) {
     const newPlaceHolders: CoordinateToPosition = {}
@@ -49,8 +65,8 @@ export default class SampleScene extends DCL.ScriptableScene {
   constructor(t: any) {
     super(t)
     const placeholderBoxes: CoordinateToPosition = {}
-    for (let i = 0; i < 19; i++) {
-      for (let j = 0; j < 19; j++) {
+    for (let i = 1; i < LIMIT_X; i++) {
+      for (let j = 1; j < LIMIT_Z; j++) {
         const pos = { x: i, z: j, y: 0 }
         placeholderBoxes[positionToString(pos)] = pos
       }
@@ -64,8 +80,12 @@ export default class SampleScene extends DCL.ScriptableScene {
 
   async sceneDidMount() {
     this.eventSubscriber.on(`click`, (ev) => {
-      if (ev.data.elementId.startsWith('placeholder')) {
-        this.finalizeBox(getElementPositionFromId(ev.data.elementId))
+      if (ev.data.elementId.startsWith('currentBox')) {
+        this.finalizeBox(this.state.currentBox!)
+      }
+      if (ev.data.elementId.startsWith('final')) {
+          console.log(ev.data)
+        this.deleteBox(getElementPositionFromId(ev.data.elementId))
       }
     })
     this.eventSubscriber.on('positionChanged', (ev) => {
@@ -73,18 +93,25 @@ export default class SampleScene extends DCL.ScriptableScene {
       this.updateCurrent()
     })
     this.eventSubscriber.on('rotationChanged', (ev) => {
-      this.lastRotation = normalize(ev.data.quaternion)
+    console.log(ev.data.rotation)
+      this.lastRotation = normalize({
+        alpha: -ev.data.rotation.y,
+        beta: -ev.data.rotation.x
+      })
       this.updateCurrent()
     })
   }
 
   updateCurrent() {
     if (this.lastRotation && this.lastPosition) {
+      let count = 0
       const box = raycast(this.lastPosition, this.lastRotation, 20, {
-x: 30, y: 30, z: 30 }, (coor: Coordinate, face: Coordinate) => {
+x: LIMIT_X, y: LIMIT_Y, z: LIMIT_Z }, (coor: Coordinate, face: Coordinate) => {
+        count++;
+        console.log(`testing ${count} ${JSON.stringify(coor)} returns ${!!this.state.placeholderBoxes[positionToString(coor)]}`)
+        if (distance(coor, this.lastPosition!) < 2.5) return false
 
-        console.log(`testing ${JSON.stringify(coor)} returns ${!!this.state.placeholderBoxes[positionToString(coor)]}`)
-        return !!this.state.placeholderBoxes[positionToString(coor)]
+        return !!this.state.placeholderBoxes[positionToString(coor)] || !!this.state.finalBoxes[positionToString(coor)]
       })
       if (box) {
         this.setState({ ...this.state,
@@ -129,13 +156,19 @@ x: 30, y: 30, z: 30 }, (coor: Coordinate, face: Coordinate) => {
 
   drawCurrentBox() {
     if (!this.state.currentBox) return null
-    return <box id={'currentBox'} position={this.state.currentBox} scale={{ x: size, y: size, z: size }} material={'#transparent'} />
+    return <box id={'currentBox'} position={{
+      x: this.state.currentBox.x + offset,
+      y: this.state.currentBox.y + offset,
+      z: this.state.currentBox.z + offset,
+    }}
+      scale={{ x: size, y: size, z: size }} material={'#transparent'} />
   }
 
   async render() {
     return (
       <scene>
         <material id='transparent' ambientColor={'#FFFFFF'} alpha={transparency} />
+        <box scale={{ x: 39.99, y: 0.01, z: 39.99 }} position={{ x: 20, y: 0.001, z: 20 }} color='#2f2f2f' />
         { this.drawCurrentBox() }
         { this.drawFinalizedBoxes() }
       </scene>

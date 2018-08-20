@@ -13,8 +13,8 @@ export function getElementPositionFromId(elementName: string): Coordinate {
   if (elementName.startsWith('placeholder')) {
     return getElementPositionFromString(elementName.substr('placeholder_'.length))
   }
-  if (elementName.startsWith('finalized')) {
-    return getElementPositionFromString(elementName.substr('finalized_'.length))
+  if (elementName.startsWith('final_')) {
+    return getElementPositionFromString(elementName.substr('final_'.length))
   }
   throw new Error('Invalid elementName')
 }
@@ -35,13 +35,13 @@ export function nineNeighbors(position: Coordinate): Array<Coordinate> {
   const res = []
   for (let dx of DELTA) {
       const x = position.x + dx
-      if (x >= 0 && x <= LIMIT_X)
+      if (x > 0 && x <= LIMIT_X)
       for (let dy of DELTA) {
           const y = position.y + dy
           if (y >= 0 && y <= LIMIT_Y)
           for (let dz of DELTA) {
               const z = position.z + dz
-              if (z >= 0 && z <= LIMIT_Z)
+              if (z > 0 && z <= LIMIT_Z)
               res.push({ x: position.x + dx, y: position.y + dy, z: position.z + dz })
           }
       }

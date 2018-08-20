@@ -1,11 +1,13 @@
 import { Coordinate } from './types'
 
-export function normalize(qt: { x: number, y: number, z: number, w: number }): Coordinate {
-  return {
-    x: qt.x / qt.w,
-    y: qt.z / qt.w,
-    z: qt.y / qt.w
+export function normalize(qt: { alpha: number, beta: number }): Coordinate {
+  const res = {
+      z: Math.cos(qt.alpha * Math.PI / 180)*Math.cos(qt.beta * Math.PI / 180),
+      y: Math.sin(qt.beta * Math.PI / 180),
+      x: -Math.sin(qt.alpha * Math.PI / 180)*Math.cos(qt.beta * Math.PI / 180),
   }
+    console.log(qt, res)
+return res
 }
 
 /**
@@ -43,7 +45,6 @@ export function raycast(
   // (i.e. change the integer part of the coordinate) in the variables
   // tMaxX, tMaxY, and tMaxZ.
 
-  console.log(`origin is ${JSON.stringify(origin)}, direction ${JSON.stringify(direction)}`)
   // Cube containing origin point.
   let x = Math.floor(origin.x)
   let y = Math.floor(origin.y)
@@ -78,9 +79,9 @@ export function raycast(
   let found = false
 
   while (/* ray has not gone past bounds of world */
-         (stepX > 0 ? x < maxSize.x : x >= 0) &&
-         (stepY > 0 ? y < maxSize.y : y >= 0) &&
-         (stepZ > 0 ? z < maxSize.z : z >= 0)) {
+         (stepX >= 0 ? x < maxSize.x : x >= 0) &&
+         (stepY >= 0 ? y < maxSize.y : y >= 0) &&
+         (stepZ >= 0 ? z < maxSize.z : z >= 0)) {
 
     // Invoke the callback, unless we are not *yet* within the bounds of the
     // world.
@@ -145,6 +146,14 @@ function intbound(s: number, ds: number): number {
     // problem is now s+t*ds = 1
     return (1-s)/ds
   }
+}
+
+function square(w: number): number {
+  return w * w
+}
+
+export function distance(c: Coordinate, d: Coordinate): number {
+  return square(c.x - d.x + 0.5) + square(c.y - d.y + 0.5) + square(c.z - d.z + 0.5)
 }
 
 function signum(x: number) {
