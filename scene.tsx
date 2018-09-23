@@ -1,4 +1,4 @@
-import * as DCL from 'metaverse-api'
+import * as DCL from 'decentraland-api'
 
 import { Coordinate, CoordinateToPosition } from './types'
 
@@ -19,7 +19,7 @@ import {
   positionFinal
 } from './auxFunc'
 
-const server = 'https://app-lathwagftc.now.sh'
+const server = 'https://voxelcraft-server.now.sh'
 
 export default class SampleScene extends DCL.ScriptableScene {
   state: {
