@@ -1,19 +1,17 @@
 {
-  "name": "dcl-project",
+  "name": "voxelcraft",
   "version": "1.0.0",
-  "description": "My new Decentraland project",
+  "description": "A collaborative building scene",
   "scripts": {
     "start": "echo \"{\\\"trackStats\\\": false}\" >> ~/.dclinfo && dcl start",
-    "build": "metaverse-compiler build.json",
-    "watch": "metaverse-compiler build.json --watch"
+    "build": "dcl build"
   },
-  "author": "",
-  "license": "MIT",
+  "author": "Esteban Ordano <esteban@decentraland.org>",
+  "license": "Apache-2.0",
   "devDependencies": {},
   "dependencies": {
     "@types/socket.io-client": "^1.4.32",
-    "decentraland": "git+https://github.com/decentraland/cli.git#feat/nowatch",
-    "decentraland-api": "^4.1.1",
-    "socket.io-client": "^2.1.1"
+    "decentraland-ecs": "^6.1.5",
+    "socket.io-client": "^2.2.0"
   }
 }
