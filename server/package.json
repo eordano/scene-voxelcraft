@@ -7,14 +7,14 @@
     "postinstall": "tsc index.ts",
     "start": "node index.js"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Esteban Ordano <esteban@decentraland.org>",
+  "license": "Apache-2.0",
   "dependencies": {
-    "@types/express": "^4.16.0",
-    "@types/socket.io": "^1.4.37",
-    "cors": "^2.8.4",
-    "express": "^4.16.3",
-    "socket.io": "^2.1.1",
-    "typescript": "^3.0.1"
+    "@types/express": "^4.17.0",
+    "@types/socket.io": "^2.1.2",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "socket.io": "^2.2.0",
+    "typescript": "^3.5.2"
   }
 }
